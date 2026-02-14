@@ -136,7 +136,6 @@ class LLMInterceptor:
     def _intercept_crewai_call(
         self, original: Callable[..., Any], self_obj: Any, *args: Any, **kwargs: Any
     ) -> Any:
-        import sys
 
         model = kwargs.get("model", getattr(self_obj, "model", None) or "gpt-4o-mini")
         messages = kwargs.get("messages", args[0] if args else [])

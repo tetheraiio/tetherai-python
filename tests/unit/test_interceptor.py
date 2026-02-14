@@ -86,7 +86,7 @@ class TestLLMInterceptor:
         except ImportError:
             pytest.skip("litellm not installed")
 
-        tracker = BudgetTracker(run_id="test", max_usd=0.01)
+        tracker = BudgetTracker(run_id="test", max_usd=0.0001)
         counter = TokenCounter(backend="tiktoken")
         pricing = PricingRegistry()
         collector = TraceCollector()

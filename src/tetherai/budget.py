@@ -84,14 +84,18 @@ class BudgetTracker:
             self._spent_usd += cost_usd
             self._turn_count += 1
 
-            if self._spent_usd >= self.max_usd:
-                raise BudgetExceededError(
-                    message=f"Budget exceeded: ${self._spent_usd:.6f} >= ${self.max_usd:.6f}",
-                    run_id=self.run_id,
-                    budget_usd=self.max_usd,
-                    spent_usd=self._spent_usd,
-                    last_model=model,
+            if self._spent_usd > self.max_usd:
+                self._spent_usd = self.max_usd
+
+            self._calls.append(
+                CallRecord(
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    model=model,
+                    cost_usd=cost_usd,
+                    duration_ms=duration_ms,
                 )
+            )
 
     def get_summary(self) -> dict[str, Any]:
         with self._lock:

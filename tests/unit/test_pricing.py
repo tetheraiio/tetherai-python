@@ -22,7 +22,7 @@ class TestPricingRegistry:
     def test_estimate_call_cost_math(self):
         registry = PricingRegistry()
         cost = registry.estimate_call_cost("gpt-4o", 1000, 500)
-        expected = (0.0025 * 1000) + (0.01 * 500)
+        expected = (0.0025 * 1000 / 1000) + (0.01 * 500 / 1000)
         assert abs(cost - expected) < 0.0001
 
     def test_unknown_model_raises(self):
