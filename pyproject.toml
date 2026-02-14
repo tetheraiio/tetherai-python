@@ -1,5 +1,5 @@
 [project]
-name = "tetherai"
+name = "tetherai-python"
 version = "0.1.0-alpha"
 description = "AI budget guardrails for LLM applications"
 readme = "README.md"
