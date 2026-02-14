@@ -2,11 +2,13 @@ from tetherai import protect_crew, BudgetExceededError
 from crewai import Agent, Task, Crew, Process
 
 # Create a research agent that will loop when given a broad task
+# Note: Set OPENAI_API_KEY env var to run this example
 researcher = Agent(
     role="Research Analyst",
     goal="Find comprehensive information on AI observability tools",
     backstory="You are a thorough research analyst known for detailed analysis.",
     verbose=True,
+    llm="gpt-4o-mini",  # Explicitly set the model
 )
 
 # Task that will trigger multiple agent reasoning steps
