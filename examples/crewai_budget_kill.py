@@ -8,7 +8,7 @@ researcher = Agent(
     goal="Find comprehensive information on AI observability tools",
     backstory="You are a thorough research analyst known for detailed analysis.",
     verbose=True,
-    llm="gpt-4o-mini",  # Explicitly set the model
+    llm="gpt-4.1-nano",  # Explicitly set the model
 )
 
 # Task that will trigger multiple agent reasoning steps
@@ -27,7 +27,7 @@ crew = Crew(
 )
 
 # Protect the crew with a low budget ($0.10)
-protected_crew = protect_crew(crew, max_usd=0.10)
+protected_crew = protect_crew(crew, max_usd=0.00001)
 
 try:
     result = protected_crew.kickoff()

@@ -22,8 +22,7 @@ class LLMInterceptor:
         self.pricing = pricing
         self.trace_collector = trace_collector
 
-        self._original_completion: Callable[..., Any] | None = None
-        self._original_acompletion: Callable[..., Any] | None = None
+        self._originals: dict[str, Callable[..., Any]] = {}
         self._active = False
 
     def activate(self) -> None:
@@ -35,12 +34,51 @@ class LLMInterceptor:
         except ImportError:
             return
 
-        self._original_completion = litellm.completion
-        self._original_acompletion = litellm.acompletion
+        # Patch all common litellm entry points
+        methods_to_patch = [
+            "completion",
+            "acompletion",
+            "chat.completions.create",
+            "completion_with_functions",
+            "acompletion_with_functions",
+        ]
 
-        litellm.completion = self._patched_completion
-        litellm.acompletion = self._patched_acompletion
+        for method in methods_to_patch:
+            parts = method.split(".")
+            obj = litellm
+            for part in parts:
+                if hasattr(obj, part):
+                    obj = getattr(obj, part)
+                else:
+                    break
+            else:
+                # All parts found, patch it
+                self._originals[method] = obj
+
+                if method == "chat.completions.create":
+                    litellm.chat.completions.create = self._make_patcher(method, obj)
+                elif method == "completion_with_functions":
+                    litellm.completion_with_functions = self._make_patcher(method, obj)
+                elif method == "acompletion_with_functions":
+                    litellm.acompletion_with_functions = self._make_patcher(method, obj)
+                else:
+                    setattr(litellm, method, self._make_patcher(method, obj))
+
         self._active = True
+
+    def _make_patcher(self, method: str, original: Callable[..., Any]) -> Callable[..., Any]:
+        if "a" in method[:1]:
+
+            async def patched(*args: Any, **kwargs: Any) -> Any:
+                return await self._intercept_call_async(original, *args, **kwargs)
+
+            return patched
+        else:
+
+            def patched(*args: Any, **kwargs: Any) -> Any:
+                return self._intercept_call(original, *args, **kwargs)
+
+            return patched
 
     def deactivate(self) -> None:
         if not self._active:
@@ -52,11 +90,17 @@ class LLMInterceptor:
             self._active = False
             return
 
-        if self._original_completion:
-            litellm.completion = self._original_completion
-        if self._original_acompletion:
-            litellm.acompletion = self._original_acompletion
+        for method, original in self._originals.items():
+            if method == "chat.completions.create":
+                litellm.chat.completions.create = original
+            elif method == "completion_with_functions":
+                litellm.completion_with_functions = original
+            elif method == "acompletion_with_functions":
+                litellm.acompletion_with_functions = original
+            else:
+                setattr(litellm, method, original)
 
+        self._originals.clear()
         self._active = False
 
     def __enter__(self) -> "LLMInterceptor":
@@ -66,17 +110,12 @@ class LLMInterceptor:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.deactivate()
 
-    def _patched_completion(self, *args: Any, **kwargs: Any) -> Any:
-        return self._intercept_call(self._original_completion, *args, **kwargs)
-
-    async def _patched_acompletion(self, *args: Any, **kwargs: Any) -> Any:
-        return await self._intercept_call_async(self._original_acompletion, *args, **kwargs)
-
     def _intercept_call(
         self, original_fn: Callable[..., Any] | None, *args: Any, **kwargs: Any
     ) -> Any:
         if original_fn is None:
             raise TetherError("Interceptor not properly activated")
+
         model = kwargs.get("model", args[0] if args else "unknown")
         messages = kwargs.get("messages", [])
 
@@ -156,6 +195,7 @@ class LLMInterceptor:
     ) -> Any:
         if original_fn is None:
             raise TetherError("Interceptor not properly activated")
+
         model = kwargs.get("model", args[0] if args else "unknown")
         messages = kwargs.get("messages", [])
 
