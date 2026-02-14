@@ -1,8 +1,9 @@
 import json
 import os
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
 
 from tetherai.exporter import (
     ConsoleExporter,
@@ -10,7 +11,7 @@ from tetherai.exporter import (
     NoopExporter,
     get_exporter,
 )
-from tetherai.trace import Trace, Span
+from tetherai.trace import Span, Trace
 
 
 class TestConsoleExporter:

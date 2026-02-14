@@ -1,19 +1,13 @@
-import pytest
-import threading
 import asyncio
-from unittest.mock import Mock, patch
+import threading
+from unittest.mock import Mock
+
+import pytest
 
 from tetherai.circuit_breaker import enforce_budget
-from tetherai.budget import BudgetTracker
-from tetherai.token_counter import TokenCounter
-from tetherai.pricing import PricingRegistry
-from tetherai.trace import TraceCollector
-from tetherai.interceptor import LLMInterceptor
-from tetherai.exceptions import BudgetExceededError, TurnLimitError
 
 
 def make_mock_llm_call(cost: float = 0.01):
-    from unittest.mock import Mock
     response = Mock()
     response.choices = [Mock(message=Mock(content="test response"))]
     response.usage = Mock(prompt_tokens=10, completion_tokens=5)
@@ -80,6 +74,7 @@ class TestEnforceBudgetConcurrent:
             @enforce_budget(max_usd=budget)
             def func():
                 return budget
+
             return func
 
         funcs = [make_func(i) for i in [1.0, 2.0, 3.0]]

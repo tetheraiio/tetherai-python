@@ -7,6 +7,7 @@ MAX_PREVIEW_LENGTH = 200
 
 def generate_id() -> str:
     import uuid
+
     return uuid.uuid4().hex[:16]
 
 

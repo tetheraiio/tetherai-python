@@ -88,9 +88,7 @@ class LLMInterceptor:
             input_tokens = 0
 
         try:
-            estimated_input_cost = (
-                self.pricing.get_input_cost(model) * input_tokens
-            )
+            estimated_input_cost = self.pricing.get_input_cost(model) * input_tokens
         except Exception:
             estimated_input_cost = 0
 
@@ -126,9 +124,7 @@ class LLMInterceptor:
                 output_tokens = 0
                 actual_input_tokens = input_tokens
 
-            cost_usd = self.pricing.estimate_call_cost(
-                model, actual_input_tokens, output_tokens
-            )
+            cost_usd = self.pricing.estimate_call_cost(model, actual_input_tokens, output_tokens)
 
             span.output_tokens = output_tokens
             span.input_tokens = actual_input_tokens
@@ -171,9 +167,7 @@ class LLMInterceptor:
             input_tokens = 0
 
         try:
-            estimated_input_cost = (
-                self.pricing.get_input_cost(model) * input_tokens
-            )
+            estimated_input_cost = self.pricing.get_input_cost(model) * input_tokens
         except Exception:
             estimated_input_cost = 0
 
@@ -209,9 +203,7 @@ class LLMInterceptor:
                 output_tokens = 0
                 actual_input_tokens = input_tokens
 
-            cost_usd = self.pricing.estimate_call_cost(
-                model, actual_input_tokens, output_tokens
-            )
+            cost_usd = self.pricing.estimate_call_cost(model, actual_input_tokens, output_tokens)
 
             span.output_tokens = output_tokens
             span.input_tokens = actual_input_tokens
@@ -245,9 +237,7 @@ class LLMInterceptor:
         output_tokens: int,
     ) -> None:
         cost_usd = self.pricing.estimate_call_cost(model, input_tokens, output_tokens)
-        self.budget_tracker.pre_check(
-            self.pricing.get_input_cost(model) * input_tokens
-        )
+        self.budget_tracker.pre_check(self.pricing.get_input_cost(model) * input_tokens)
         self.budget_tracker.record_call(
             input_tokens,
             output_tokens,

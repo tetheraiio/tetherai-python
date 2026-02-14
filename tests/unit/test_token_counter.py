@@ -1,7 +1,8 @@
-import pytest
 import time
 
-from tetherai.token_counter import TokenCounter, count_tokens, count_messages
+import pytest
+
+from tetherai.token_counter import TokenCounter, count_messages, count_tokens
 
 
 class TestTokenCounter:
@@ -15,7 +16,7 @@ class TestTokenCounter:
         assert count > 0
         assert count == 4
 
-    def test_multibyte_unicode(self):
+    def test_unicode_and_emoji(self):
         counter = TokenCounter(backend="tiktoken")
         japanese = "こんにちは世界"
         count = counter.count_tokens(japanese, model="gpt-4o")
@@ -35,7 +36,6 @@ class TestTokenCounter:
 
         assert elapsed < 5.0
         assert count > 0
-        assert count == 5
 
     def test_messages_include_framing_overhead(self):
         counter = TokenCounter(backend="tiktoken")
@@ -43,27 +43,6 @@ class TestTokenCounter:
         message_count = counter.count_messages(messages, model="gpt-4o")
         text_count = counter.count_tokens("hi", model="gpt-4o")
         assert message_count > text_count
-
-    def test_multibyte_unicode(self):
-        counter = TokenCounter(backend="tiktoken")
-        japanese = "こんにちは世界"
-        count = counter.count_tokens(japanese, model="gpt-4o")
-        assert count > 0
-
-        emoji = "Hello 👋🌍"
-        count_emoji = counter.count_tokens(emoji, model="gpt-4o")
-        assert count_emoji > 0
-
-    def test_large_input_performance(self):
-        counter = TokenCounter(backend="tiktoken")
-        large_text = "a" * 10000
-
-        start = time.time()
-        count = counter.count_tokens(large_text, model="gpt-4o")
-        elapsed = time.time() - start
-
-        assert elapsed < 5.0
-        assert count > 0
 
     def test_tiktoken_fallback_warns_for_claude(self, caplog):
         counter = TokenCounter(backend="tiktoken")
@@ -110,7 +89,7 @@ class TestTokenCounter:
 class TestTokenCounterLitellm:
     def test_litellm_backend_uses_correct_tokenizer(self):
         try:
-            import litellm
+            import litellm  # noqa: F401
         except ImportError:
             pytest.skip("litellm not installed")
 

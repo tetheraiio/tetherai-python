@@ -1,12 +1,13 @@
-import pytest
-from unittest.mock import Mock, MagicMock, patch, AsyncMock
+from unittest.mock import Mock, patch
 
-from tetherai.interceptor import LLMInterceptor
+import pytest
+
 from tetherai.budget import BudgetTracker
-from tetherai.token_counter import TokenCounter
-from tetherai.pricing import PricingRegistry
-from tetherai.trace import TraceCollector
 from tetherai.exceptions import BudgetExceededError, TetherError
+from tetherai.interceptor import LLMInterceptor
+from tetherai.pricing import PricingRegistry
+from tetherai.token_counter import TokenCounter
+from tetherai.trace import TraceCollector
 
 
 class MockResponse:
@@ -120,9 +121,8 @@ class TestLLMInterceptor:
             interceptor = LLMInterceptor(tracker, counter, pricing, collector)
             interceptor.activate()
 
-            result = litellm.completion(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": "test message"}]
+            litellm.completion(
+                model="gpt-4o", messages=[{"role": "user", "content": "test message"}]
             )
 
         assert tracker.spent_usd > 0
@@ -146,8 +146,7 @@ class TestLLMInterceptor:
             interceptor.activate()
 
             result = litellm.completion(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": "test"}]
+                model="gpt-4o", messages=[{"role": "user", "content": "test"}]
             )
 
         assert result.choices[0].message.content == "Hello!"
@@ -170,10 +169,7 @@ class TestLLMInterceptor:
             interceptor = LLMInterceptor(tracker, counter, pricing, collector)
             interceptor.activate()
 
-            litellm.completion(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": "test"}]
-            )
+            litellm.completion(model="gpt-4o", messages=[{"role": "user", "content": "test"}])
 
         trace = collector.get_current_trace()
         assert trace is not None
@@ -204,19 +200,12 @@ class TestLLMInterceptor:
         collector = TraceCollector()
         collector.start_trace("test")
 
-        with patch.object(
-            litellm,
-            "completion",
-            side_effect=Exception("Rate limited")
-        ):
+        with patch.object(litellm, "completion", side_effect=Exception("Rate limited")):
             interceptor = LLMInterceptor(tracker, counter, pricing, collector)
             interceptor.activate()
 
-            with pytest.raises(Exception):
-                litellm.completion(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": "test"}]
-                )
+            with pytest.raises(Exception):  # noqa: B017
+                litellm.completion(model="gpt-4o", messages=[{"role": "user", "content": "test"}])
 
         trace = collector.get_current_trace()
         assert trace.spans[-1].status == "error"
@@ -225,7 +214,7 @@ class TestLLMInterceptor:
 class TestLLMInterceptorErrors:
     def test_double_activate_raises(self):
         try:
-            import litellm
+            import litellm  # noqa: F401
         except ImportError:
             pytest.skip("litellm not installed")
 

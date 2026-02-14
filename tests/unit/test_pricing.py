@@ -1,7 +1,7 @@
 import pytest
 
 from tetherai.exceptions import UnknownModelError
-from tetherai.pricing import PricingRegistry, get_pricing_registry, BUNDLED_PRICING
+from tetherai.pricing import BUNDLED_PRICING, PricingRegistry, get_pricing_registry
 
 
 class TestPricingRegistry:
@@ -52,7 +52,8 @@ class TestPricingRegistryLitellm:
     def test_litellm_backend_uses_litellm(self):
         registry = PricingRegistry(source="litellm")
         try:
-            import litellm
+            import litellm  # noqa: F401
+
             cost = registry.get_input_cost("gpt-4o")
             assert cost > 0
         except ImportError:

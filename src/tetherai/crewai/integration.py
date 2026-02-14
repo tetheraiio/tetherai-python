@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from crewai import Crew
@@ -6,7 +7,7 @@ if TYPE_CHECKING:
 
 def _check_crewai_installed() -> None:
     try:
-        import crewai
+        import crewai  # noqa: F401
     except ImportError:
         raise ImportError(
             "crewai is not installed. Install it with: pip install tetherai[crewai]"
@@ -37,6 +38,7 @@ def protect_crew(
             def callback(step_output: Any) -> None:
                 if original:
                     original(step_output)
+
             return callback
 
         if original_step_callback is not None:
@@ -49,6 +51,7 @@ def protect_crew(
             def callback(task_output: Any) -> None:
                 if original:
                     original(task_output)
+
             return callback
 
         if original_task_callback is not None:

@@ -1,4 +1,3 @@
-
 from tetherai.exceptions import UnknownModelError
 
 BUNDLED_PRICING: dict[str, tuple[float, float]] = {
@@ -71,9 +70,7 @@ class PricingRegistry:
             return self._get_litellm_cost(model, "output")
         raise UnknownModelError(f"Unknown model: {model}", model)
 
-    def estimate_call_cost(
-        self, model: str, input_tokens: int, output_tokens: int
-    ) -> float:
+    def estimate_call_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         input_cost = self.get_input_cost(model) * input_tokens
         output_cost = self.get_output_cost(model) * output_tokens
         return input_cost + output_cost
@@ -82,9 +79,7 @@ class PricingRegistry:
         normalized = model.lower().strip()
         return MODEL_ALIASES.get(normalized, model)
 
-    def register_custom_model(
-        self, model: str, input_cost: float, output_cost: float
-    ) -> None:
+    def register_custom_model(self, model: str, input_cost: float, output_cost: float) -> None:
         self._custom_models[model] = (input_cost, output_cost)
 
     def _get_litellm_cost(self, model: str, direction: str) -> float:

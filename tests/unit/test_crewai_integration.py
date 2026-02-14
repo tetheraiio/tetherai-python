@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from tetherai.crewai.integration import protect_crew
 
@@ -7,7 +8,6 @@ from tetherai.crewai.integration import protect_crew
 class TestCrewAIIntegration:
     def test_crew_not_installed_import_error(self):
         with patch.dict("sys.modules", {"crewai": None}):
-            import importlib
             import tetherai.crewai.integration as integration
 
             with pytest.raises(ImportError, match="crewai is not installed"):
@@ -15,7 +15,7 @@ class TestCrewAIIntegration:
 
     def test_protect_crew_returns_same_object(self):
         try:
-            import crewai
+            import crewai  # noqa: F401
         except ImportError:
             pytest.skip("crewai not installed")
 
@@ -33,7 +33,7 @@ class TestCrewAIIntegration:
 
     def test_protect_crew_sets_kickoff_wrapper(self):
         try:
-            import crewai
+            import crewai  # noqa: F401
         except ImportError:
             pytest.skip("crewai not installed")
 
@@ -52,7 +52,7 @@ class TestCrewAIIntegration:
 
     def test_existing_callbacks_preserved(self):
         try:
-            import crewai
+            import crewai  # noqa: F401
         except ImportError:
             pytest.skip("crewai not installed")
 

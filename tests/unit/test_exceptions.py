@@ -1,11 +1,10 @@
 import pickle
-import pytest
 
 from tetherai.exceptions import (
     BudgetExceededError,
-    TurnLimitError,
-    TokenCountError,
     TetherError,
+    TokenCountError,
+    TurnLimitError,
 )
 
 

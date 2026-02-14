@@ -21,7 +21,7 @@ class ConsoleExporter:
         print(file=sys.stderr)
 
         for i, span in enumerate(trace.spans):
-            print(f"  [{i+1}] {span.span_type}: {span.model or 'N/A'}", file=sys.stderr)
+            print(f"  [{i + 1}] {span.span_type}: {span.model or 'N/A'}", file=sys.stderr)
             if span.cost_usd is not None:
                 print(f"      Cost: ${span.cost_usd:.6f}", file=sys.stderr)
             if span.input_tokens:
@@ -49,9 +49,7 @@ class NoopExporter:
         pass
 
 
-def get_exporter(
-    exporter_type: str, output_dir: str = "./tetherai_traces/"
-) -> TraceExporter:
+def get_exporter(exporter_type: str, output_dir: str = "./tetherai_traces/") -> TraceExporter:
     if exporter_type == "console":
         return ConsoleExporter()
     elif exporter_type == "json":

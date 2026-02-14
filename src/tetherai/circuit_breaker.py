@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import uuid
 from collections.abc import Callable
@@ -129,6 +130,3 @@ async def _run_with_budget_async(
         if trace and trace_export != "none":
             exporter = get_exporter(trace_export, config.trace_export_path)
             exporter.export(trace)
-
-
-import asyncio

@@ -35,27 +35,21 @@ class TetherConfig:
         valid_pricing = ("bundled", "litellm")
         if self.pricing_source not in valid_pricing:
             raise ValueError(
-                f"Invalid pricing_source: {self.pricing_source}. "
-                f"Must be one of {valid_pricing}"
+                f"Invalid pricing_source: {self.pricing_source}. Must be one of {valid_pricing}"
             )
 
         valid_export = ("console", "json", "none", "otlp")
         if self.trace_export not in valid_export:
             raise ValueError(
-                f"Invalid trace_export: {self.trace_export}. "
-                f"Must be one of {valid_export}"
+                f"Invalid trace_export: {self.trace_export}. Must be one of {valid_export}"
             )
 
     @classmethod
     def from_env(cls) -> "TetherConfig":
         return cls(
             collector_url=os.getenv("TETHERAI_COLLECTOR_URL"),
-            default_budget_usd=float(
-                os.getenv("TETHERAI_DEFAULT_BUDGET_USD", "10.0")
-            ),
-            default_max_turns=int(
-                os.getenv("TETHERAI_DEFAULT_MAX_TURNS", "50")
-            ),
+            default_budget_usd=float(os.getenv("TETHERAI_DEFAULT_BUDGET_USD", "10.0")),
+            default_max_turns=int(os.getenv("TETHERAI_DEFAULT_MAX_TURNS", "50")),
             token_counter_backend=cls._resolve_backend(
                 os.getenv("TETHERAI_TOKEN_COUNTER_BACKEND", "auto")
             ),
@@ -66,16 +60,15 @@ class TetherConfig:
             trace_export=cast(
                 TraceExport, os.getenv("TETHERAI_TRACE_EXPORT", "console") or "console"
             ),
-            trace_export_path=os.getenv(
-                "TETHERAI_TRACE_EXPORT_PATH", "./tetherai_traces/"
-            ),
+            trace_export_path=os.getenv("TETHERAI_TRACE_EXPORT_PATH", "./tetherai_traces/"),
         )
 
     @staticmethod
     def _resolve_backend(backend: str) -> TokenCounterBackend:
         if backend == "auto":
             try:
-                import litellm
+                import litellm  # noqa: F401
+
                 return "litellm"
             except ImportError:
                 return "tiktoken"

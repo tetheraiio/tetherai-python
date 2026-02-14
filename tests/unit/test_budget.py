@@ -1,7 +1,8 @@
-import pytest
 import threading
 
-from tetherai.budget import BudgetTracker, CallRecord
+import pytest
+
+from tetherai.budget import BudgetTracker
 from tetherai.exceptions import BudgetExceededError, TurnLimitError
 
 

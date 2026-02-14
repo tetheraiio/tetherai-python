@@ -22,7 +22,9 @@ class BudgetExceededError(TetherError):
         self.trace_url = trace_url
 
     def __str__(self) -> str:
-        return f"Budget exceeded: ${self.spent_usd:.2f} / ${self.budget_usd:.2f} on run {self.run_id}"
+        return (
+            f"Budget exceeded: ${self.spent_usd:.2f} / ${self.budget_usd:.2f} on run {self.run_id}"
+        )
 
     def __reduce__(self) -> tuple[type, tuple]:  # type: ignore[type-arg]
         return (

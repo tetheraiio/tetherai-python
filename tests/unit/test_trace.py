@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime
 
 from tetherai.trace import Span, Trace, TraceCollector, generate_id
@@ -54,6 +53,7 @@ class TestTrace:
         span2 = Span(run_id="test-123", span_type="llm_call")
 
         import time
+
         time.sleep(0.01)
         span2.timestamp = datetime.now()
 

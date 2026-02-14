@@ -1,0 +1,2 @@
+[![CI](https://github.com/tetherai/tetherai-python/actions/workflows/ci.yml/badge.svg)](https://github.com/tetherai/tetherai-python/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/tetherai)](https://pypi.org/project/tetherai/)

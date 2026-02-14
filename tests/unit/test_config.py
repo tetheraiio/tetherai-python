@@ -1,6 +1,6 @@
-import os
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from tetherai.config import TetherConfig, load_config
 
@@ -27,8 +27,10 @@ class TestConfig:
         assert config.default_budget_usd == 8.0
 
     def test_config_is_frozen(self):
+        from dataclasses import FrozenInstanceError
+
         config = TetherConfig()
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             config.default_budget_usd = 5.0
 
     def test_invalid_token_counter_backend(self):

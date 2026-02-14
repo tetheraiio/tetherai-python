@@ -21,6 +21,7 @@ def _get_tiktoken_encoder(encoding_name: str = "cl100k_base") -> Any:
 
     try:
         import tiktoken
+
         encoder = tiktoken.get_encoding(encoding_name)
         TOKENIZER_CACHE[encoding_name] = encoder
         return encoder
@@ -31,6 +32,7 @@ def _get_tiktoken_encoder(encoding_name: str = "cl100k_base") -> Any:
 def _get_litellm_tokenizer(model: str) -> Any:
     try:
         import litellm
+
         return litellm.token_counter  # type: ignore[attr-defined]
     except ImportError as e:
         raise TokenCountError("litellm not installed", model) from e
@@ -44,7 +46,8 @@ class TokenCounter:
 
         if backend == "auto":
             try:
-                import litellm
+                import litellm  # noqa: F401
+
                 self._backend = "litellm"
             except ImportError:
                 self._backend = "tiktoken"
@@ -96,24 +99,20 @@ class TokenCounter:
                 return self._litellm_tokenizer(model=model, text=text)  # type: ignore[no-any-return,misc]
             except Exception:
                 logger.warning(
-                    f"litellm token_counter failed for {model}, "
-                    f"falling back to tiktoken"
+                    f"litellm token_counter failed for {model}, falling back to tiktoken"
                 )
                 return self._count_with_tiktoken(text, model)
 
         return self._litellm_tokenizer(model=model, text=text)  # type: ignore[no-any-return,misc]
 
-    def _count_messages_with_tiktoken(
-        self, messages: list[dict[str, str]], model: str
-    ) -> int:
+    def _count_messages_with_tiktoken(self, messages: list[dict[str, str]], model: str) -> int:
         encoder = self._tiktoken_encoder
         if encoder is None:
             encoder = _get_tiktoken_encoder()
 
         if model.startswith("claude-"):
             logger.warning(
-                f"Using tiktoken for Claude model {model}. "
-                f"Token counts may be inaccurate."
+                f"Using tiktoken for Claude model {model}. Token counts may be inaccurate."
             )
 
         total_tokens = 0
@@ -128,19 +127,14 @@ class TokenCounter:
         total_tokens += 3
         return total_tokens
 
-    def _count_messages_with_litellm(
-        self, messages: list[dict[str, str]], model: str
-    ) -> int:
+    def _count_messages_with_litellm(self, messages: list[dict[str, str]], model: str) -> int:
         if self._litellm_tokenizer is None:
             self._litellm_tokenizer = _get_litellm_tokenizer(model)
 
         try:
             return self._litellm_tokenizer(model=model, messages=messages)  # type: ignore[no-any-return,misc]
         except Exception:
-            logger.warning(
-                f"litellm token_counter failed for {model}, "
-                f"falling back to tiktoken"
-            )
+            logger.warning(f"litellm token_counter failed for {model}, falling back to tiktoken")
             return self._count_messages_with_tiktoken(messages, model)
 
 
