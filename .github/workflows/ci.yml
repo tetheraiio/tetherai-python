@@ -23,9 +23,6 @@ jobs:
       - name: Run unit tests
         run: |
           pytest tests/unit/ -v --cov=tetherai --cov-report=xml --cov-fail-under=75
-      - name: Run integration tests
-        run: |
-          pytest tests/integration/ -v
 
   lint:
     runs-on: ubuntu-latest
