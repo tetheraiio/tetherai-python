@@ -49,16 +49,16 @@ class BudgetTracker:
         with self._lock:
             return self._spent_usd >= self.max_usd
 
-    def pre_check(self, estimated_input_cost: float) -> None:
+    def pre_check(self, estimated_cost: float, model: str = "unknown") -> None:
         with self._lock:
-            projected = self._spent_usd + estimated_input_cost
-            if projected > self.max_usd:
+            projected = self._spent_usd + estimated_cost
+            if projected >= self.max_usd:
                 raise BudgetExceededError(
-                    message=f"Budget exceeded: ${projected:.2f} > ${self.max_usd:.2f}",
+                    message=f"Budget exceeded: ${projected:.6f} >= ${self.max_usd:.6f}",
                     run_id=self.run_id,
                     budget_usd=self.max_usd,
                     spent_usd=projected,
-                    last_model="unknown",
+                    last_model=model,
                 )
 
     def record_call(
@@ -84,18 +84,14 @@ class BudgetTracker:
             self._spent_usd += cost_usd
             self._turn_count += 1
 
-            self._calls.append(
-                CallRecord(
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    model=model,
-                    cost_usd=cost_usd,
-                    duration_ms=duration_ms,
+            if self._spent_usd >= self.max_usd:
+                raise BudgetExceededError(
+                    message=f"Budget exceeded: ${self._spent_usd:.6f} >= ${self.max_usd:.6f}",
+                    run_id=self.run_id,
+                    budget_usd=self.max_usd,
+                    spent_usd=self._spent_usd,
+                    last_model=model,
                 )
-            )
-
-            if self._spent_usd > self.max_usd:
-                self._spent_usd = self.max_usd
 
     def get_summary(self) -> dict[str, Any]:
         with self._lock:

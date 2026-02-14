@@ -31,6 +31,7 @@ class LLMInterceptor:
 
         self._patch_litellm()
         self._patch_openai()
+        self._patch_crewai()
 
         self._active = True
 
@@ -103,6 +104,205 @@ class LLMInterceptor:
             openai.AsyncOpenAI.chat.completions.create = self._make_async_patcher(
                 "openai.async.chat.completions.create", original
             )
+
+    def _patch_crewai(self) -> None:
+        try:
+            from crewai.llms.providers.openai.completion import OpenAICompletion
+        except ImportError:
+            return
+
+        interceptor = self
+
+        if hasattr(OpenAICompletion, "_call_completions"):
+            original_call = OpenAICompletion._call_completions
+            self._originals["crewai._call_completions"] = original_call
+
+            def patched(self: Any, *args: Any, **kwargs: Any) -> Any:
+                return interceptor._intercept_crewai_call(original_call, self, *args, **kwargs)
+
+            OpenAICompletion._call_completions = patched
+
+        if hasattr(OpenAICompletion, "_acall_completions"):
+            original_acall = OpenAICompletion._acall_completions
+            self._originals["crewai._acall_completions"] = original_acall
+
+            async def patched(self: Any, *args: Any, **kwargs: Any) -> Any:
+                return await interceptor._intercept_crewai_call_async(
+                    original_acall, self, *args, **kwargs
+                )
+
+            OpenAICompletion._acall_completions = patched
+
+    def _intercept_crewai_call(
+        self, original: Callable[..., Any], self_obj: Any, *args: Any, **kwargs: Any
+    ) -> Any:
+        import sys
+
+        model = kwargs.get("model", getattr(self_obj, "model", None) or "gpt-4o-mini")
+        messages = kwargs.get("messages", args[0] if args else [])
+
+        start_time = time.time()
+
+        try:
+            input_tokens = self.token_counter.count_messages(messages, model)
+        except Exception:
+            input_tokens = 0
+
+        estimated_output_tokens = input_tokens * 4
+
+        try:
+            estimated_input_cost = self.pricing.get_input_cost(model) * input_tokens / 1000
+            estimated_output_cost = (
+                self.pricing.get_output_cost(model) * estimated_output_tokens / 1000
+            )
+            estimated_total_cost = estimated_input_cost + estimated_output_cost
+        except Exception:
+            estimated_total_cost = 0
+
+        try:
+            self.budget_tracker.pre_check(estimated_total_cost, model)
+        except BudgetExceededError:
+            raise
+
+        span = Span(
+            run_id=self.budget_tracker.run_id,
+            span_type="llm_call",
+            model=model,
+            input_tokens=input_tokens,
+            input_preview=messages[0].get("content", "")[:200] if messages else None,
+        )
+        self.trace_collector.add_span(span)
+
+        try:
+            response = original(self_obj, *args, **kwargs)
+        except Exception:
+            span.status = "error"
+            span.duration_ms = (time.time() - start_time) * 1000
+            raise
+
+        duration_ms = (time.time() - start_time) * 1000
+
+        try:
+            usage = getattr(response, "usage", None)
+            if usage:
+                output_tokens = getattr(usage, "completion_tokens", 0)
+                actual_input_tokens = getattr(usage, "prompt_tokens", input_tokens)
+            else:
+                usage_summary = getattr(self_obj, "get_token_usage_summary", None)
+                if usage_summary:
+                    token_usage = usage_summary()
+                    total_usage = (
+                        token_usage
+                        if isinstance(token_usage, dict)
+                        else token_usage.model_dump()
+                        if hasattr(token_usage, "model_dump")
+                        else {}
+                    )
+                    actual_input_tokens = total_usage.get("prompt_tokens", input_tokens)
+                    output_tokens = total_usage.get("completion_tokens", 0)
+                else:
+                    output_tokens = 0
+                    actual_input_tokens = input_tokens
+
+            cost_usd = self.pricing.estimate_call_cost(model, actual_input_tokens, output_tokens)
+
+            span.output_tokens = output_tokens
+            span.input_tokens = actual_input_tokens
+            span.cost_usd = cost_usd
+            span.duration_ms = duration_ms
+            span.status = "ok"
+
+            self.budget_tracker.record_call(
+                actual_input_tokens,
+                output_tokens,
+                model,
+                cost_usd,
+                duration_ms,
+            )
+        except BudgetExceededError:
+            raise
+        except Exception:
+            pass
+
+        return response
+
+    async def _intercept_crewai_call_async(
+        self, original: Callable[..., Any], self_obj: Any, *args: Any, **kwargs: Any
+    ) -> Any:
+        model = kwargs.get("model", getattr(self_obj, "model", None) or "gpt-4o-mini")
+        messages = kwargs.get("messages", args[0] if args else [])
+
+        start_time = time.time()
+
+        try:
+            input_tokens = self.token_counter.count_messages(messages, model)
+        except Exception:
+            input_tokens = 0
+
+        estimated_output_tokens = input_tokens * 4
+
+        try:
+            estimated_input_cost = self.pricing.get_input_cost(model) * input_tokens / 1000
+            estimated_output_cost = (
+                self.pricing.get_output_cost(model) * estimated_output_tokens / 1000
+            )
+            estimated_total_cost = estimated_input_cost + estimated_output_cost
+        except Exception:
+            estimated_total_cost = 0
+
+        try:
+            self.budget_tracker.pre_check(estimated_total_cost, model)
+        except BudgetExceededError:
+            raise
+
+        span = Span(
+            run_id=self.budget_tracker.run_id,
+            span_type="llm_call",
+            model=model,
+            input_tokens=input_tokens,
+            input_preview=messages[0].get("content", "")[:200] if messages else None,
+        )
+        self.trace_collector.add_span(span)
+
+        try:
+            response = await original(self_obj, *args, **kwargs)
+        except Exception:
+            span.status = "error"
+            span.duration_ms = (time.time() - start_time) * 1000
+            raise
+
+        duration_ms = (time.time() - start_time) * 1000
+
+        try:
+            output_tokens = getattr(response, "usage", None)
+            if output_tokens:
+                output_tokens = getattr(output_tokens, "completion_tokens", 0)
+                actual_input_tokens = getattr(output_tokens, "prompt_tokens", input_tokens)
+            else:
+                output_tokens = 0
+                actual_input_tokens = input_tokens
+
+            cost_usd = self.pricing.estimate_call_cost(model, actual_input_tokens, output_tokens)
+
+            span.output_tokens = output_tokens
+            span.input_tokens = actual_input_tokens
+            span.cost_usd = cost_usd
+            span.duration_ms = duration_ms
+            span.status = "ok"
+
+            self.budget_tracker.record_call(
+                actual_input_tokens,
+                output_tokens,
+                model,
+                cost_usd,
+                duration_ms,
+            )
+        except BudgetExceededError:
+            raise
+        except Exception:
+            pass
+
+        return response
 
     def _make_patcher(self, method: str, original: Callable[..., Any]) -> Callable[..., Any]:
         def patched(*args: Any, **kwargs: Any) -> Any:
@@ -177,13 +377,19 @@ class LLMInterceptor:
         except Exception:
             input_tokens = 0
 
-        try:
-            estimated_input_cost = self.pricing.get_input_cost(model) * input_tokens
-        except Exception:
-            estimated_input_cost = 0
+        estimated_output_tokens = input_tokens * 4
 
         try:
-            self.budget_tracker.pre_check(estimated_input_cost)
+            estimated_input_cost = self.pricing.get_input_cost(model) * input_tokens / 1000
+            estimated_output_cost = (
+                self.pricing.get_output_cost(model) * estimated_output_tokens / 1000
+            )
+            estimated_total_cost = estimated_input_cost + estimated_output_cost
+        except Exception:
+            estimated_total_cost = 0
+
+        try:
+            self.budget_tracker.pre_check(estimated_total_cost, model)
         except BudgetExceededError:
             raise
 
@@ -257,13 +463,19 @@ class LLMInterceptor:
         except Exception:
             input_tokens = 0
 
-        try:
-            estimated_input_cost = self.pricing.get_input_cost(model) * input_tokens
-        except Exception:
-            estimated_input_cost = 0
+        estimated_output_tokens = input_tokens * 4
 
         try:
-            self.budget_tracker.pre_check(estimated_input_cost)
+            estimated_input_cost = self.pricing.get_input_cost(model) * input_tokens / 1000
+            estimated_output_cost = (
+                self.pricing.get_output_cost(model) * estimated_output_tokens / 1000
+            )
+            estimated_total_cost = estimated_input_cost + estimated_output_cost
+        except Exception:
+            estimated_total_cost = 0
+
+        try:
+            self.budget_tracker.pre_check(estimated_total_cost, model)
         except BudgetExceededError:
             raise
 
@@ -328,7 +540,7 @@ class LLMInterceptor:
         output_tokens: int,
     ) -> None:
         cost_usd = self.pricing.estimate_call_cost(model, input_tokens, output_tokens)
-        self.budget_tracker.pre_check(self.pricing.get_input_cost(model) * input_tokens)
+        self.budget_tracker.pre_check(cost_usd, model)
         self.budget_tracker.record_call(
             input_tokens,
             output_tokens,

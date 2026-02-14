@@ -83,6 +83,7 @@ def _run_with_budget(
         interceptor.deactivate()
         trace = trace_collector.end_trace()
         if trace and trace_export != "none":
+            trace.budget_summary = budget_tracker.get_summary()
             exporter = get_exporter(trace_export, config.trace_export_path)
             exporter.export(trace)
 
@@ -128,5 +129,6 @@ async def _run_with_budget_async(
         interceptor.deactivate()
         trace = trace_collector.end_trace()
         if trace and trace_export != "none":
+            trace.budget_summary = budget_tracker.get_summary()
             exporter = get_exporter(trace_export, config.trace_export_path)
             exporter.export(trace)

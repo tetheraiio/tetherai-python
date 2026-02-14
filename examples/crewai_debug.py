@@ -1,24 +1,25 @@
 from tetherai import protect_crew, BudgetExceededError
 from crewai import Agent, Task, Crew, Process
+import os
 
-# Create a research agent that will loop when given a broad task
-# Note: Set OPENAI_API_KEY env var to run this example
+print("Starting CrewAI budget demo...")
+print(f"OPENAI_API_KEY set: {bool(os.getenv('OPENAI_API_KEY'))}")
+
+# Create a research agent
 researcher = Agent(
     role="Research Analyst",
     goal="Find comprehensive information on AI observability tools",
     backstory="You are a thorough research analyst known for detailed analysis.",
-    verbose=False,
-    llm="gpt-4.1",  # Explicitly set the model
+    verbose=True,
+    llm="gpt-4o-mini",
 )
 
-# Task that will trigger multiple agent reasoning steps
 task = Task(
     description="Research the competitive landscape of AI observability tools",
     expected_output="A comprehensive report on AI observability tools",
     agent=researcher,
 )
 
-# Create the crew
 crew = Crew(
     agents=[researcher],
     tasks=[task],
@@ -26,16 +27,30 @@ crew = Crew(
     verbose=True,
 )
 
-# Protect the crew with a low budget ($0.10)
-protected_crew = protect_crew(crew, max_usd=0.01, trace_export="json")
+# Before protection - let's check what crew uses
+print(f"Crew type: {type(crew)}")
+print(f"Agents: {crew.agents}")
+if crew.agents:
+    print(f"Agent LLM: {crew.agents[0].llm}")
+    print(f"Agent LLM type: {type(crew.agents[0].llm)}")
+
+# Check what happens when we call kickoff
+print("\n--- Testing without protection first ---")
+try:
+    result = crew.kickoff()
+    print(f"Result: {result}")
+except Exception as e:
+    print(f"Error: {e}")
+
+print("\n--- Now with protection ---")
+protected_crew = protect_crew(crew, max_usd=0.10, trace_export="json")
 
 try:
     result = protected_crew.kickoff()
-    print(f"\nCrew completed successfully")
+    print(f"Result: {result}")
 except BudgetExceededError as e:
     print(f"\n⚠️  TetherAI Budget Exceeded!")
     print(f"   Budget:  ${e.budget_usd:.2f}")
     print(f"   Spent:   ${e.spent_usd:.2f}")
     print(f"   Model:   {e.last_model}")
     print(f"\n💾 Full execution trace saved to: ./tetherai_traces/{e.run_id}.json")
-    print(f"   Open it to see exactly which step blew the budget.")

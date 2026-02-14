@@ -1,6 +1,9 @@
 from tetherai.exceptions import UnknownModelError
 
 BUNDLED_PRICING: dict[str, tuple[float, float]] = {
+    "gpt-4.1": (0.003, 0.012),
+    "gpt-4.1-mini": (0.0008, 0.0032),
+    "gpt-4.1-nano": (0.0002, 0.0008),
     "gpt-4o": (0.0025, 0.01),
     "gpt-4o-mini": (0.00015, 0.0006),
     "gpt-4-turbo": (0.01, 0.03),
@@ -71,8 +74,8 @@ class PricingRegistry:
         raise UnknownModelError(f"Unknown model: {model}", model)
 
     def estimate_call_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
-        input_cost = self.get_input_cost(model) * input_tokens
-        output_cost = self.get_output_cost(model) * output_tokens
+        input_cost = self.get_input_cost(model) * input_tokens / 1000
+        output_cost = self.get_output_cost(model) * output_tokens / 1000
         return input_cost + output_cost
 
     def resolve_model_alias(self, model: str) -> str:
