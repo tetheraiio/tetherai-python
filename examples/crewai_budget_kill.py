@@ -12,6 +12,7 @@ researcher = Agent(
 # Task that will trigger multiple agent reasoning steps
 task = Task(
     description="Research the competitive landscape of AI observability tools",
+    expected_output="A comprehensive report on AI observability tools",
     agent=researcher,
 )
 
