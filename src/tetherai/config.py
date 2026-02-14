@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal, cast
 
 TokenCounterBackend = Literal["tiktoken", "litellm", "auto"]
 PricingSource = Literal["bundled", "litellm"]
@@ -59,11 +59,13 @@ class TetherConfig:
             token_counter_backend=cls._resolve_backend(
                 os.getenv("TETHERAI_TOKEN_COUNTER_BACKEND", "auto")
             ),
-            pricing_source=os.getenv(
-                "TETHERAI_PRICING_SOURCE", "bundled"
+            pricing_source=cast(
+                PricingSource, os.getenv("TETHERAI_PRICING_SOURCE", "bundled") or "bundled"
             ),
             log_level=os.getenv("TETHERAI_LOG_LEVEL", "WARNING"),
-            trace_export=os.getenv("TETHERAI_TRACE_EXPORT", "console"),
+            trace_export=cast(
+                TraceExport, os.getenv("TETHERAI_TRACE_EXPORT", "console") or "console"
+            ),
             trace_export_path=os.getenv(
                 "TETHERAI_TRACE_EXPORT_PATH", "./tetherai_traces/"
             ),
@@ -83,7 +85,7 @@ class TetherConfig:
         return self._resolve_backend(self.token_counter_backend)
 
 
-def load_config(**kwargs) -> TetherConfig:
+def load_config(**kwargs: Any) -> TetherConfig:
     env_config = TetherConfig.from_env()
 
     config_dict = {}

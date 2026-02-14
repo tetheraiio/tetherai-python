@@ -93,8 +93,10 @@ class PricingRegistry:
         except ImportError:
             raise UnknownModelError(
                 f"Unknown model: {model} (litellm not installed)", model
-            )
-        cost = litellm.cost_per_token(model, direction)
+            ) from None
+        cost = litellm.cost_per_token(model, direction)  # type: ignore[arg-type,attr-defined]
+        if isinstance(cost, tuple):
+            return cost[0] if direction == "input" else cost[1]
         return cost
 
 

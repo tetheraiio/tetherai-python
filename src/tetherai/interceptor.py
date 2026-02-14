@@ -22,8 +22,8 @@ class LLMInterceptor:
         self.pricing = pricing
         self.trace_collector = trace_collector
 
-        self._original_completion: Callable | None = None
-        self._original_acompletion: Callable | None = None
+        self._original_completion: Callable[..., Any] | None = None
+        self._original_acompletion: Callable[..., Any] | None = None
         self._active = False
 
     def activate(self) -> None:
@@ -73,8 +73,10 @@ class LLMInterceptor:
         return await self._intercept_call_async(self._original_acompletion, *args, **kwargs)
 
     def _intercept_call(
-        self, original_fn: Callable, *args: Any, **kwargs: Any
+        self, original_fn: Callable[..., Any] | None, *args: Any, **kwargs: Any
     ) -> Any:
+        if original_fn is None:
+            raise TetherError("Interceptor not properly activated")
         model = kwargs.get("model", args[0] if args else "unknown")
         messages = kwargs.get("messages", [])
 
@@ -154,8 +156,10 @@ class LLMInterceptor:
         return response
 
     async def _intercept_call_async(
-        self, original_fn: Callable, *args: Any, **kwargs: Any
+        self, original_fn: Callable[..., Any] | None, *args: Any, **kwargs: Any
     ) -> Any:
+        if original_fn is None:
+            raise TetherError("Interceptor not properly activated")
         model = kwargs.get("model", args[0] if args else "unknown")
         messages = kwargs.get("messages", [])
 

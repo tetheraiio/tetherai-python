@@ -24,7 +24,7 @@ class BudgetExceededError(TetherError):
     def __str__(self) -> str:
         return f"Budget exceeded: ${self.spent_usd:.2f} / ${self.budget_usd:.2f} on run {self.run_id}"
 
-    def __reduce__(self):
+    def __reduce__(self) -> tuple[type, tuple]:  # type: ignore[type-arg]
         return (
             self.__class__,
             (
@@ -56,7 +56,7 @@ class TurnLimitError(TetherError):
     def __str__(self) -> str:
         return f"Turn limit exceeded: {self.current_turn} / {self.max_turns} on run {self.run_id}"
 
-    def __reduce__(self):
+    def __reduce__(self) -> tuple[type, tuple]:  # type: ignore[type-arg]
         return (
             self.__class__,
             (
@@ -75,7 +75,7 @@ class TokenCountError(TetherError):
         super().__init__(message)
         self.model = model
 
-    def __reduce__(self):
+    def __reduce__(self) -> tuple[type, tuple]:  # type: ignore[type-arg]
         return (self.__class__, (self.args[0], self.model))
 
 
@@ -86,5 +86,5 @@ class UnknownModelError(TetherError):
         super().__init__(message)
         self.model = model
 
-    def __reduce__(self):
+    def __reduce__(self) -> tuple[type, tuple]:  # type: ignore[type-arg]
         return (self.__class__, (self.args[0], self.model))

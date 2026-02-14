@@ -14,7 +14,10 @@ class tether:
     enforce_budget = staticmethod(enforce_budget)
 
 
-def protect_crew(*args, **kwargs):
+from typing import Any
+
+
+def protect_crew(*args: Any, **kwargs: Any) -> Any:
     from tetherai.crewai.integration import protect_crew as _protect_crew
     return _protect_crew(*args, **kwargs)
 

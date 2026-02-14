@@ -15,7 +15,7 @@ CHATML_FORMATTING = {
 }
 
 
-def _get_tiktoken_encoder(encoding_name: str = "cl100k_base"):
+def _get_tiktoken_encoder(encoding_name: str = "cl100k_base") -> Any:
     if encoding_name in TOKENIZER_CACHE:
         return TOKENIZER_CACHE[encoding_name]
 
@@ -25,15 +25,15 @@ def _get_tiktoken_encoder(encoding_name: str = "cl100k_base"):
         TOKENIZER_CACHE[encoding_name] = encoder
         return encoder
     except Exception as e:
-        raise TokenCountError(f"Failed to load tiktoken: {e}")
+        raise TokenCountError(f"Failed to load tiktoken: {e}") from e
 
 
-def _get_litellm_tokenizer(model: str):
+def _get_litellm_tokenizer(model: str) -> Any:
     try:
         import litellm
-        return litellm.token_counter
-    except ImportError:
-        raise TokenCountError("litellm not installed", model)
+        return litellm.token_counter  # type: ignore[attr-defined]
+    except ImportError as e:
+        raise TokenCountError("litellm not installed", model) from e
 
 
 class TokenCounter:
@@ -93,7 +93,7 @@ class TokenCounter:
 
         if model.startswith("claude-"):
             try:
-                return self._litellm_tokenizer(model=model, text=text)
+                return self._litellm_tokenizer(model=model, text=text)  # type: ignore[no-any-return,misc]
             except Exception:
                 logger.warning(
                     f"litellm token_counter failed for {model}, "
@@ -101,7 +101,7 @@ class TokenCounter:
                 )
                 return self._count_with_tiktoken(text, model)
 
-        return self._litellm_tokenizer(model=model, text=text)
+        return self._litellm_tokenizer(model=model, text=text)  # type: ignore[no-any-return,misc]
 
     def _count_messages_with_tiktoken(
         self, messages: list[dict[str, str]], model: str
@@ -135,7 +135,7 @@ class TokenCounter:
             self._litellm_tokenizer = _get_litellm_tokenizer(model)
 
         try:
-            return self._litellm_tokenizer(model=model, messages=messages)
+            return self._litellm_tokenizer(model=model, messages=messages)  # type: ignore[no-any-return,misc]
         except Exception:
             logger.warning(
                 f"litellm token_counter failed for {model}, "

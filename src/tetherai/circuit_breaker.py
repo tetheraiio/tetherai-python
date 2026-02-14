@@ -42,7 +42,7 @@ def enforce_budget(
 
 
 def _run_with_budget(
-    func: Callable,
+    func: Callable[..., Any],
     max_usd: float,
     max_turns: int | None,
     on_exceed: str,
@@ -87,7 +87,7 @@ def _run_with_budget(
 
 
 async def _run_with_budget_async(
-    func: Callable,
+    func: Callable[..., Any],
     max_usd: float,
     max_turns: int | None,
     on_exceed: str,

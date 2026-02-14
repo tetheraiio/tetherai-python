@@ -23,7 +23,7 @@ class Span:
     output_tokens: int | None = None
     cost_usd: float | None = None
     status: str = "ok"
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     input_preview: str | None = None
     output_preview: str | None = None
 
@@ -57,7 +57,7 @@ class Span:
 class Trace:
     run_id: str
     spans: list[Span] = field(default_factory=list)
-    budget_summary: dict = field(default_factory=dict)
+    budget_summary: dict[str, Any] = field(default_factory=dict)
     start_time: datetime = field(default_factory=datetime.now)
     end_time: datetime | None = None
 
@@ -90,10 +90,10 @@ class Trace:
 
 
 class TraceCollector:
-    def __init__(self):
+    def __init__(self) -> None:
         self._current_trace: Trace | None = None
 
-    def start_trace(self, run_id: str, budget_summary: dict | None = None) -> Trace:
+    def start_trace(self, run_id: str, budget_summary: dict[str, Any] | None = None) -> Trace:
         self._current_trace = Trace(
             run_id=run_id,
             budget_summary=budget_summary or {},
