@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -14,50 +13,29 @@ def _check_crewai_installed() -> None:
         ) from None
 
 
+class ProtectedCrew:
+    """Wrapper around CrewAI crew with budget enforcement."""
+
+    def __init__(self, crew: "Crew", max_usd: float, max_turns: int | None = None):
+        from tetherai.circuit_breaker import enforce_budget
+
+        self._crew = crew
+        self._max_usd = max_usd
+        self._max_turns = max_turns
+
+        self.kickoff = enforce_budget(max_usd=max_usd, max_turns=max_turns)(crew.kickoff)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._crew, name)
+
+
 def protect_crew(
     crew: "Crew",
     max_usd: float,
     max_turns: int | None = None,
-) -> "Crew":
+) -> ProtectedCrew:
     _check_crewai_installed()
-
-    from tetherai.circuit_breaker import enforce_budget
-
-    original_kickoff = crew.kickoff
-
-    @enforce_budget(max_usd=max_usd, max_turns=max_turns)
-    def wrapped_kickoff(*args: Any, **kwargs: Any) -> Any:
-        return original_kickoff(*args, **kwargs)
-
-    crew.kickoff = wrapped_kickoff  # type: ignore[method-assign]
-
-    for agent in crew.agents:
-        original_step_callback = getattr(agent, "step_callback", None)
-
-        def make_callback(original: Callable[..., Any] | None) -> Callable[..., Any]:
-            def callback(step_output: Any) -> None:
-                if original:
-                    original(step_output)
-
-            return callback
-
-        if original_step_callback is not None:
-            agent.step_callback = make_callback(original_step_callback)  # type: ignore[attr-defined]
-
-    for task in crew.tasks:
-        original_task_callback = getattr(task, "callback", None)
-
-        def make_task_callback(original: Callable[..., Any] | None) -> Callable[..., Any]:
-            def callback(task_output: Any) -> None:
-                if original:
-                    original(task_output)
-
-            return callback
-
-        if original_task_callback is not None:
-            task.callback = make_task_callback(original_task_callback)
-
-    return crew
+    return ProtectedCrew(crew, max_usd, max_turns)
 
 
 def tether_step_callback(step_output: Any) -> None:
