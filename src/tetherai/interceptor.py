@@ -29,12 +29,17 @@ class LLMInterceptor:
         if self._active:
             raise TetherError("Interceptor is already active")
 
+        self._patch_litellm()
+        self._patch_openai()
+
+        self._active = True
+
+    def _patch_litellm(self) -> None:
         try:
             import litellm
         except ImportError:
             return
 
-        # Patch all common litellm entry points
         methods_to_patch = [
             "completion",
             "acompletion",
@@ -52,33 +57,64 @@ class LLMInterceptor:
                 else:
                     break
             else:
-                # All parts found, patch it
-                self._originals[method] = obj
+                self._originals[f"litellm.{method}"] = obj
 
                 if method == "chat.completions.create":
-                    litellm.chat.completions.create = self._make_patcher(method, obj)
+                    key = f"litellm.{method}"
+                    litellm.chat.completions.create = self._make_patcher(key, obj)
                 elif method == "completion_with_functions":
-                    litellm.completion_with_functions = self._make_patcher(method, obj)
+                    key = f"litellm.{method}"
+                    litellm.completion_with_functions = self._make_patcher(key, obj)
                 elif method == "acompletion_with_functions":
-                    litellm.acompletion_with_functions = self._make_patcher(method, obj)
+                    key = f"litellm.{method}"
+                    litellm.acompletion_with_functions = self._make_patcher(key, obj)
                 else:
-                    setattr(litellm, method, self._make_patcher(method, obj))
+                    key = f"litellm.{method}"
+                    setattr(litellm, method, self._make_patcher(key, obj))
 
-        self._active = True
+    def _patch_openai(self) -> None:
+        try:
+            import openai
+        except ImportError:
+            return
+
+        # Patch sync OpenAI client
+        if (
+            hasattr(openai, "OpenAI")
+            and hasattr(openai.OpenAI, "chat")
+            and hasattr(openai.OpenAI.chat, "completions")
+            and hasattr(openai.OpenAI.chat.completions, "create")
+        ):
+            original = openai.OpenAI.chat.completions.create
+            self._originals["openai.chat.completions.create"] = original
+            openai.OpenAI.chat.completions.create = self._make_patcher(
+                "openai.chat.completions.create", original
+            )
+
+        # Patch async OpenAI client
+        if (
+            hasattr(openai, "AsyncOpenAI")
+            and hasattr(openai.AsyncOpenAI, "chat")
+            and hasattr(openai.AsyncOpenAI.chat, "completions")
+            and hasattr(openai.AsyncOpenAI.chat.completions, "create")
+        ):
+            original = openai.AsyncOpenAI.chat.completions.create
+            self._originals["openai.async.chat.completions.create"] = original
+            openai.AsyncOpenAI.chat.completions.create = self._make_async_patcher(
+                "openai.async.chat.completions.create", original
+            )
 
     def _make_patcher(self, method: str, original: Callable[..., Any]) -> Callable[..., Any]:
-        if "a" in method[:1]:
+        def patched(*args: Any, **kwargs: Any) -> Any:
+            return self._intercept_call(original, *args, **kwargs)
 
-            async def patched(*args: Any, **kwargs: Any) -> Any:
-                return await self._intercept_call_async(original, *args, **kwargs)
+        return patched
 
-            return patched
-        else:
+    def _make_async_patcher(self, method: str, original: Callable[..., Any]) -> Callable[..., Any]:
+        async def patched(*args: Any, **kwargs: Any) -> Any:
+            return await self._intercept_call_async(original, *args, **kwargs)
 
-            def patched(*args: Any, **kwargs: Any) -> Any:
-                return self._intercept_call(original, *args, **kwargs)
-
-            return patched
+        return patched
 
     def deactivate(self) -> None:
         if not self._active:
@@ -87,18 +123,33 @@ class LLMInterceptor:
         try:
             import litellm
         except ImportError:
-            self._active = False
-            return
+            litellm = None
 
         for method, original in self._originals.items():
-            if method == "chat.completions.create":
-                litellm.chat.completions.create = original
-            elif method == "completion_with_functions":
-                litellm.completion_with_functions = original
-            elif method == "acompletion_with_functions":
-                litellm.acompletion_with_functions = original
-            else:
-                setattr(litellm, method, original)
+            if method.startswith("litellm."):
+                name = method[8:]
+                if name == "chat.completions.create" and litellm:
+                    litellm.chat.completions.create = original
+                elif name == "completion_with_functions" and litellm:
+                    litellm.completion_with_functions = original
+                elif name == "acompletion_with_functions" and litellm:
+                    litellm.acompletion_with_functions = original
+                elif litellm:
+                    setattr(litellm, name, original)
+            elif method == "openai.chat.completions.create":
+                try:
+                    import openai
+
+                    openai.OpenAI.chat.completions.create = original
+                except ImportError:
+                    pass
+            elif method == "openai.async.chat.completions.create":
+                try:
+                    import openai
+
+                    openai.AsyncOpenAI.chat.completions.create = original
+                except ImportError:
+                    pass
 
         self._originals.clear()
         self._active = False
