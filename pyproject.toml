@@ -1,6 +1,6 @@
 [project]
 name = "tetherai-python"
-version = "0.1.31"
+version = "0.1.5"
 description = "AI budget guardrails for LLM applications"
 readme = "README.md"
 license = { text = "Apache-2.0" }
